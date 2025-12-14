@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Custom.Build.props" />
+  </Folder>
+  <Project Path="AzureBlobTransport.TransportTests\TransportTests.csproj" Type="Classic C#" />
+  <Project Path="AzureBlobTransport\AzureBlobTransport.csproj" Type="Classic C#" />
+</Solution>
