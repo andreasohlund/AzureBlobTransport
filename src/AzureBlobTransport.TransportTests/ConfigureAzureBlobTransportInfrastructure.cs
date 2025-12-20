@@ -10,7 +10,12 @@ class ConfigureAzureBlobTransportInfrastructure : IConfigureTransportInfrastruct
     {
         var connectionString = Environment.GetEnvironmentVariable("AzureBlobTransport_ConnectionString");
 
-        return null;
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new Exception("AzureBlobTransport_ConnectionString environment variable not set");
+        }
+
+        return new AzureBlobTransport(connectionString);
     }
 
     public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, QueueAddress inputQueue, string errorQueueName, CancellationToken cancellationToken = default)

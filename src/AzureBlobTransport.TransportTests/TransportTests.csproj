@@ -16,4 +16,8 @@
     <PackageReference Include="NServiceBus.TransportTests.Sources" Version="10.0.0-alpha.21" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AzureBlobTransport\AzureBlobTransport.csproj" />
+  </ItemGroup>
+
 </Project>
