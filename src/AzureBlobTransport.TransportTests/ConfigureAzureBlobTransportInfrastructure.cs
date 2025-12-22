@@ -33,10 +33,7 @@ class ConfigureAzureBlobTransportInfrastructure : IConfigureTransportInfrastruct
         return transport;
     }
 
-    public Task Cleanup(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    public Task Cleanup(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     string[] queuesToCleanUp;
 }
