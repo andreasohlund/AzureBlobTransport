@@ -27,7 +27,7 @@ public class AzureBlobTransport(string connectionString) : TransportDefinition(T
 
         
         var bodyFolder = new AzureBlobFolder(containerClient, "/bodies");
-        return new AzureBlobTransportInfrastructure(endpointFolder, bodyFolder, receivers);
+        return new AzureBlobTransportInfrastructure(bodyFolder, receivers);
     }
 
     public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() => [TransportTransactionMode.None, TransportTransactionMode.ReceiveOnly];

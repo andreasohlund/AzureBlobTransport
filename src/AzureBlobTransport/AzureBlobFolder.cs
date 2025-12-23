@@ -16,21 +16,25 @@ class AzureBlobFolder(BlobContainerClient containerClient, string rootPath)
         await JsonSerializer.SerializeAsync(stream, value, options, cancellationToken).ConfigureAwait(false);
         stream.Position = 0;
 
-        var uploadOptions = new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = "application/json" }, Tags = indexTags };
+        var uploadOptions = new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders { ContentType = "application/json" },
+            Tags = indexTags
+        };
         await blob.UploadAsync(
             stream,
             uploadOptions,
             cancellationToken
         ).ConfigureAwait(false);
     }
-    
+
     public async Task Write(
         string name,
         ReadOnlyMemory<byte> data,
         CancellationToken cancellationToken = new())
     {
         var blob = containerClient.GetBlobClient(Path.Combine(rootPath, name));
-        
+
         using var stream = new MemoryStream(data.ToArray(), writable: false);
         await blob.UploadAsync(
             stream,
@@ -39,6 +43,14 @@ class AzureBlobFolder(BlobContainerClient containerClient, string rootPath)
         ).ConfigureAwait(false);
     }
 
-    public string RootPath => rootPath;
     public BlobContainerClient ContainerClient => containerClient;
+
+    public async Task<BlobDownloadResult> Read(string name, CancellationToken cancellationToken)
+    {
+        var blob = containerClient.GetBlobClient(Path.Combine(rootPath, name));
+
+        var response = await blob.DownloadContentAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        return response.Value;
+    }
 }
