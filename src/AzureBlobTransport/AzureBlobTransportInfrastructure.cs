@@ -3,16 +3,16 @@ using NServiceBus.Transport;
 
 class AzureBlobTransportInfrastructure : TransportInfrastructure
 {
-    public AzureBlobTransportInfrastructure(AzureBlobFolder blobFolder, ReceiveSettings[] receiverSettings)
+    public AzureBlobTransportInfrastructure(AzureBlobFolder endpointFolder, AzureBlobFolder bodyFolder, ReceiveSettings[] receiverSettings)
     {
         var receivers = new Dictionary<string, IMessageReceiver>();
         foreach (var receiverSetting in receiverSettings)
         {
-            receivers[receiverSetting.Id] = new AzureBlobMessageReceiver(receiverSetting, blobFolder, new AzureBlobSubscriptionManager());
+            receivers[receiverSetting.Id] = new AzureBlobMessageReceiver(receiverSetting, endpointFolder, new AzureBlobSubscriptionManager());
         }
 
         Receivers = receivers;
-        Dispatcher = new AzureBlobDispatcher();
+        Dispatcher = new AzureBlobDispatcher(bodyFolder);
     }
 
     public override Task Shutdown(CancellationToken cancellationToken = new()) => Task.CompletedTask;

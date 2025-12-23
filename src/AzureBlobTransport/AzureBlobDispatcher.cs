@@ -1,6 +1,14 @@
 using NServiceBus.Transport;
 
-class AzureBlobDispatcher : IMessageDispatcher
+class AzureBlobDispatcher(AzureBlobFolder bodyFolder) : IMessageDispatcher
 {
-    public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = new CancellationToken()) => throw new NotImplementedException();
+    public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = new())
+    {
+        // TODO: task when all
+        foreach (var unicastOperation in outgoingMessages.UnicastTransportOperations)
+        {
+            var bodyId = Guid.NewGuid().ToString();
+            await bodyFolder.Write(bodyId, unicastOperation.Message.Body, cancellationToken).ConfigureAwait(false);
+        }
+    }
 }
