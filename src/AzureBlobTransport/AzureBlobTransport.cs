@@ -53,5 +53,7 @@ class AzureBlobFolder(BlobContainerClient containerClient, string rootPath)
             new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = "application/json" } },
             cancellationToken
         ).ConfigureAwait(false);
-    } 
+    }
+
+    public string RootPath => rootPath;
 }

@@ -1,7 +1,6 @@
-using Azure.Storage.Blobs;
 using NServiceBus.Transport;
 
-class AzureBlobMessageReceiver(AzureBlobFolder blobFolder) : IMessageReceiver
+class AzureBlobMessageReceiver(ReceiveSettings receiveSettings, AzureBlobFolder blobFolder, AzureBlobSubscriptionManager subscriptionManager) : IMessageReceiver
 {
     public async Task Initialize(PushRuntimeSettings limitations, OnMessage onMessage, OnError onError, CancellationToken cancellationToken = new())
     {
@@ -13,9 +12,8 @@ class AzureBlobMessageReceiver(AzureBlobFolder blobFolder) : IMessageReceiver
 
     public Task StopReceive(CancellationToken cancellationToken = new()) => Task.CompletedTask;
 
-    public ISubscriptionManager Subscriptions { get; }
-    public string Id { get; }
-    public string ReceiveAddress { get; }
+    public ISubscriptionManager Subscriptions => subscriptionManager;
 
-    BlobContainerClient serviceBusContainer;
+    public string Id => receiveSettings.Id;
+    public string ReceiveAddress => blobFolder.RootPath;
 }
