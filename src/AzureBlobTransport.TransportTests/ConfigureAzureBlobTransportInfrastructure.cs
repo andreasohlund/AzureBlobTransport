@@ -52,5 +52,5 @@ class ConfigureAzureBlobTransportInfrastructure : IConfigureTransportInfrastruct
         }
     }
     
-    string[] queuesToCleanUp;
+    string[] queuesToCleanUp = [];
 }
