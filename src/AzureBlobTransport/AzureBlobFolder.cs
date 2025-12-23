@@ -8,6 +8,7 @@ class AzureBlobFolder(BlobContainerClient containerClient, string rootPath)
         string name,
         T value,
         JsonSerializerOptions? options = null,
+        Dictionary<string, string>? indexTags = null,
         CancellationToken cancellationToken = new())
     {
         var blob = containerClient.GetBlobClient(Path.Combine(rootPath, name));
@@ -15,9 +16,10 @@ class AzureBlobFolder(BlobContainerClient containerClient, string rootPath)
         await JsonSerializer.SerializeAsync(stream, value, options, cancellationToken).ConfigureAwait(false);
         stream.Position = 0;
 
+        var uploadOptions = new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = "application/json" }, Tags = indexTags };
         await blob.UploadAsync(
             stream,
-            new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = "application/json" } },
+            uploadOptions,
             cancellationToken
         ).ConfigureAwait(false);
     }
@@ -38,4 +40,5 @@ class AzureBlobFolder(BlobContainerClient containerClient, string rootPath)
     }
 
     public string RootPath => rootPath;
+    public BlobContainerClient ContainerClient => containerClient;
 }
