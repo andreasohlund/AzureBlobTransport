@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using NServiceBus.Transport;
 
 public class AzureBlobTransport(string connectionString) : TransportDefinition(TransportTransactionMode.ReceiveOnly, true, true, true)
@@ -9,24 +11,47 @@ public class AzureBlobTransport(string connectionString) : TransportDefinition(T
 
         await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        var endpointName = receivers.First().ReceiveAddress.BaseAddress;
+        var rootPath = "/endpoints/";
+
         if (hostSettings.CoreSettings != null)
         {
-            endpointName = hostSettings.CoreSettings.EndpointName();
+            rootPath += hostSettings.CoreSettings.EndpointName();
+        }
+        else
+        {
+            rootPath += receivers.First().ReceiveAddress.BaseAddress;
         }
 
-        var endpointClient = containerClient.GetBlobClient(endpointName + "/.metadata.json");
-        var metadata = new Dictionary<string, string>
-        {
-            ["TransportVersion"] = "1.0"
-        };
+        var blobFolder = new AzureBlobFolder(containerClient, rootPath);
+        var metadata = new Dictionary<string, string> { ["TransportVersion"] = "1.0" };
 
-        await endpointClient.UploadJsonAsync(metadata, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await blobFolder.WriteJson(".metadata.json", metadata, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        return new AzureBlobTransportInfrastructure(containerClient, endpointName, receivers);
+        return new AzureBlobTransportInfrastructure(blobFolder, receivers);
     }
 
     public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() => [TransportTransactionMode.None, TransportTransactionMode.ReceiveOnly];
 
-    const string serviceBusName = "my-service-bus";
+    const string serviceBusName = "nservicebus";
+}
+
+class AzureBlobFolder(BlobContainerClient containerClient, string rootPath)
+{
+    public async Task WriteJson<T>(
+        string name,
+        T value,
+        JsonSerializerOptions? options = null,
+        CancellationToken cancellationToken = new())
+    {
+        var blob = containerClient.GetBlobClient(Path.Combine(rootPath, name));
+        using var stream = new MemoryStream();
+        await JsonSerializer.SerializeAsync(stream, value, options, cancellationToken).ConfigureAwait(false);
+        stream.Position = 0;
+
+        await blob.UploadAsync(
+            stream,
+            new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = "application/json" } },
+            cancellationToken
+        ).ConfigureAwait(false);
+    } 
 }
