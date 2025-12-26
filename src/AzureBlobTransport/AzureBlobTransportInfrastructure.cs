@@ -8,7 +8,7 @@ class AzureBlobTransportInfrastructure : TransportInfrastructure
         var receivers = new Dictionary<string, IMessageReceiver>();
         foreach (var receiverSetting in receiverSettings)
         {
-            receivers[receiverSetting.Id] = new AzureBlobMessageReceiver(receiverSetting, bodyFolder, new AzureBlobSubscriptionManager());
+            receivers[receiverSetting.Id] = new AzureBlobMessageReceiver(receiverSetting, bodyFolder.ContainerClient, bodyFolder, new AzureBlobSubscriptionManager());
         }
 
         Receivers = receivers;

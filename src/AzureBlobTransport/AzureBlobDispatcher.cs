@@ -9,13 +9,14 @@ class AzureBlobDispatcher(AzureBlobFolder bodyFolder) : IMessageDispatcher
         foreach (var unicastOperation in outgoingMessages.UnicastTransportOperations)
         {
             var nativeMessageId = Guid.NewGuid().ToString();
+            
             await bodyFolder.Write(nativeMessageId, unicastOperation.Message.Body, cancellationToken).ConfigureAwait(false);
 
             var targetFolder = new AzureBlobFolder(bodyFolder.ContainerClient, Path.Combine("endpoints", unicastOperation.Destination));
 
             var tags = new Dictionary<string, string>
             {
-                { "state", "commited" },
+                { "state", "available" },
                 { "endpoint", unicastOperation.Destination }
             };
 
