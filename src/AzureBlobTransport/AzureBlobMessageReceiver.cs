@@ -52,7 +52,9 @@ class AzureBlobMessageReceiver(ReceiveSettings receiveSettings, BlobContainerCli
             var lease = await leaseClient.AcquireAsync(TimeSpan.FromSeconds(30), cancellationToken: cancellationToken).ConfigureAwait(false);
             var requestConditions = new BlobRequestConditions { LeaseId = lease.Value.LeaseId };
             var tagResponse = await messageClient.GetTagsAsync(requestConditions, cancellationToken).ConfigureAwait(false);
-            
+            var transportTransaction = new TransportTransaction();
+            var context = new ContextBag();
+
             var tags = tagResponse.Value.Tags;
 
             if (tags["state"] != "available")
@@ -69,8 +71,16 @@ class AzureBlobMessageReceiver(ReceiveSettings receiveSettings, BlobContainerCli
 
             var bodyBlob = await bodyFolder.Read(nativeMessageId, cancellationToken).ConfigureAwait(false);
 
-            var context = new MessageContext(blob.BlobName, headers, bodyBlob.Content.ToMemory(), new TransportTransaction(), receiveSettings.ReceiveAddress.BaseAddress, new ContextBag());
-            await onMessageReceived(context, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var messageContext = new MessageContext(blob.BlobName, headers, bodyBlob.Content.ToMemory(), transportTransaction, receiveSettings.ReceiveAddress.BaseAddress, context);
+            try
+            {
+                await onMessageReceived(messageContext, cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                var errorContext = new ErrorContext(exception, headers, nativeMessageId, bodyBlob.Content.ToMemory(), transportTransaction, 1, receiveSettings.ReceiveAddress.BaseAddress, context);
+                await onMessageFailed(errorContext, cancellationToken).ConfigureAwait(false);
+            }
 
             await messageClient.SetTagsAsync(tags, conditions: requestConditions, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
