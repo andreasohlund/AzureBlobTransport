@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,9 +32,21 @@ class ConfigureAzureBlobTransportInfrastructure : IConfigureTransportInfrastruct
         {
             var containerClient = new BlobContainerClient(ConnectionString, "nservicebus");
 
-            var blobClient = containerClient.GetBlobClient(Path.Combine("endpoints", queue));
-            
-            await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            var tasks = new List<Task>();
+
+            var prefix = $"endpoints/{queue}/";
+            await foreach (var blob in containerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
+            {
+                tasks.Add(containerClient.DeleteBlobIfExistsAsync(blob.Name, cancellationToken: cancellationToken));
+
+                if (tasks.Count >= 100) // throttle
+                {
+                    await Task.WhenAll(tasks);
+                    tasks.Clear();
+                }
+            }
+
+            await Task.WhenAll(tasks);
         }
     }
 

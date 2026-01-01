@@ -37,7 +37,6 @@ class AzureBlobMessageReceiver(ReceiveSettings receiveSettings, BlobContainerCli
             }
             catch (OperationCanceledException)
             {
-                // private token, receiver is being stopped, log the exception in case the stack trace is ever needed for debugging
                 break;
             }
         }
