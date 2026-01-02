@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
 using Azure.Storage.Blobs;
 using NServiceBus.Transport;
 using NServiceBus.TransportTests;
@@ -32,21 +33,19 @@ class ConfigureAzureBlobTransportInfrastructure : IConfigureTransportInfrastruct
         {
             var containerClient = new BlobContainerClient(ConnectionString, "nservicebus");
 
-            var tasks = new List<Task>();
-
             var prefix = $"endpoints/{queue}/";
             await foreach (var blob in containerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
             {
-                tasks.Add(containerClient.DeleteBlobIfExistsAsync(blob.Name, cancellationToken: cancellationToken));
-
-                if (tasks.Count >= 100) // throttle
+                try
                 {
-                    await Task.WhenAll(tasks);
-                    tasks.Clear();
+                    await containerClient.DeleteBlobIfExistsAsync(blob.Name, cancellationToken: cancellationToken);
                 }
-            }
+                catch (RequestFailedException e) when (e.Status == 412)
+                {
+                    Console.WriteLine(e);
+                }
 
-            await Task.WhenAll(tasks);
+            }
         }
     }
 
