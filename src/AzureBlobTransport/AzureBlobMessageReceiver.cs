@@ -57,13 +57,11 @@ class AzureBlobMessageReceiver(ReceiveSettings receiveSettings, BlobContainerCli
 
             var tags = tagResponse.Value.Tags;
 
+
             if (tags["state"] != "available")
             {
                 return;
             }
-
-            tags["state"] = "processed";
-            tags["processed-at"] = DateTime.UtcNow.ToString("O");
 
             var messageResult = await messageClient.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -72,16 +70,41 @@ class AzureBlobMessageReceiver(ReceiveSettings receiveSettings, BlobContainerCli
             var bodyBlob = await bodyFolder.Read(nativeMessageId, cancellationToken).ConfigureAwait(false);
 
             var messageContext = new MessageContext(blob.BlobName, headers, bodyBlob.Content.ToMemory(), transportTransaction, receiveSettings.ReceiveAddress.BaseAddress, context);
+            var wasSuccess = false;
+            var metadata = new Dictionary<string, string>(messageResult.Value.Details.Metadata);
+
             try
             {
                 await onMessageReceived(messageContext, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                wasSuccess = true;
             }
             catch (Exception exception)
             {
-                var errorContext = new ErrorContext(exception, headers, nativeMessageId, bodyBlob.Content.ToMemory(), transportTransaction, 1, receiveSettings.ReceiveAddress.BaseAddress, context);
-                await onMessageFailed(errorContext, cancellationToken).ConfigureAwait(false);
+                var numRetries = 0;
+                if (metadata.TryGetValue("numretries", out var numRetriesValue))
+                {
+                    numRetries = int.Parse(numRetriesValue);
+                }
+
+                numRetries++;
+                var errorContext = new ErrorContext(exception, headers, nativeMessageId, bodyBlob.Content.ToMemory(), transportTransaction, numRetries, receiveSettings.ReceiveAddress.BaseAddress, context);
+                var errorHandleResult = await onMessageFailed(errorContext, cancellationToken).ConfigureAwait(false);
+
+                metadata["numretries"] = numRetries.ToString();
+
+                if (errorHandleResult == ErrorHandleResult.Handled)
+                {
+                    wasSuccess = true;
+                }
             }
 
+            if (wasSuccess)
+            {
+                tags["state"] = "processed";
+            }
+
+            await messageClient.SetMetadataAsync(metadata, conditions: requestConditions, cancellationToken: cancellationToken).ConfigureAwait(false);
             await messageClient.SetTagsAsync(tags, conditions: requestConditions, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
         finally
